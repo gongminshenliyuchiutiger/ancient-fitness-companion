@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>古法健身陪練計時系統</title>
+    <style>
+        :root {
+            --primary-gold: #e6c17c;
+            --secondary-blue: #8ab4f8;
+            --dark-bg: #1f1f1f;
+            --panel-bg-glass: rgba(44, 44, 44, 0.65);
+            --text-light: #f0f0f0;
+            --text-dark: #333;
+        }
+        *, *::before, *::after { box-sizing: border-box; }
+        body { font-family: 'KaiTi', 'SimSun', 'Microsoft YaHei', sans-serif; background-image: url('data:image/svg+xml,%3Csvg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"%3E%3Cg fill="none" fill-rule="evenodd"%3E%3Cg fill="%232a2a2a" fill-opacity="0.4"%3E%3Cpath d="M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z"/%3E%3C/g%3E%3C/g%3E%3C/svg%3E'), radial-gradient(circle, #3a3a3a 0%, var(--dark-bg) 100%); color: var(--text-light); margin: 0; padding: 20px; display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 100vh; }
+        .main-container { width: 100%; max-width: 700px; background: var(--panel-bg-glass); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 20px; padding: 30px; box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); text-align: center; }
+        
+        .title-container { display: flex; align-items: center; justify-content: center; margin-bottom: 30px; }
+        #title-tiger-icon { width: 50px; height: 50px; margin-right: 15px; flex-shrink: 0; }
+        h1 { font-size: 2.8em; color: var(--primary-gold); margin: 0; text-shadow: 0 0 15px rgba(230, 193, 124, 0.5); }
+        h2 { font-size: 2.2em; color: var(--primary-gold); margin: 0 0 15px; }
+        h3 { font-size: 1.3em; margin: 20px 0 15px; color: var(--text-light); }
+        
+        .display-area { background-color: rgba(0,0,0,0.25); border-radius: 10px; padding: 25px; margin-bottom: 30px; min-height: 200px; box-shadow: inset 0 0 15px rgba(0,0,0,0.5); display: flex; flex-direction: column; justify-content: center; transition: all 0.3s ease; }
+        #exercise-desc { font-size: 1.4em; line-height: 1.8; color: var(--text-light); transition: opacity 0.3s ease-in-out, font-size 0.3s ease, color 0.3s ease; }
+        #exercise-desc.fade-out { opacity: 0; }
+        #exercise-desc.minimized { font-size: 1.1em; line-height: 1.6; color: #aaa; margin-top: 10px; }
+
+        .tabs { display: flex; justify-content: center; border-bottom: 1px solid rgba(255,255,255,0.2); margin-bottom: 25px; }
+        .tab-button { background: none; border: none; color: var(--text-light); padding: 10px 20px; font-size: 1.2em; cursor: pointer; transition: all 0.3s ease; border-bottom: 3px solid transparent; opacity: 0.6; }
+        .tab-button.active { color: var(--secondary-blue); border-bottom: 3px solid var(--secondary-blue); opacity: 1; }
+        .tab-content { padding: 10px 0; }
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; }
+
+        .form-group { margin-bottom: 20px; }
+        label { font-size: 1.1em; margin-right: 10px; }
+        select { font-size: 1.1em; padding: 8px 15px; border-radius: 8px; border: 1px solid var(--primary-gold); background-color: #333; color: var(--text-light); cursor: pointer; transition: all 0.2s ease; }
+        select:hover { border-color: #fff; box-shadow: 0 0 10px var(--primary-gold); }
+
+        .buttons button { font-size: 1em; padding: 10px 20px; margin: 5px; border-width: 1px; border-style: solid; background-color: rgba(255,255,255,0.1); color: var(--text-light); border-radius: 8px; cursor: pointer; transition: all 0.2s ease; }
+        .buttons button:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.3); }
+        .buttons .timer-btn { border-color: var(--primary-gold); }
+        .buttons .timer-btn:hover { background-color: var(--primary-gold); color: var(--text-dark); }
+        .buttons .reset-btn { border-color: #a85858; }
+        .buttons .reset-btn:hover { background-color: #a85858; color: #fff; }
+        .buttons .start-playlist { border-color: #58a87a; font-size: 1.1em; padding: 12px 25px; }
+        .buttons .start-playlist:hover { background-color: #58a87a; color: #fff; }
+        .buttons .stop-playlist { border-color: #a85858; font-size: 1.1em; padding: 12px 25px; }
+        .buttons .stop-playlist:hover { background-color: #a85858; color: #fff; }
+        
+        .playlist-status { margin-top: 5px; font-size: 1.1em; color: var(--text-light); min-height: 22px; }
+        .progress-ring-container { position: relative; width: 150px; height: 150px; margin: 0 auto 5px; }
+        .progress-ring-svg { transform: rotate(-90deg); width: 100%; height: 100%; }
+        .progress-ring-circle { transition: stroke-dashoffset 1s linear; stroke-width: 12px; fill: transparent; }
+        #progress-bg { stroke: rgba(0,0,0,0.3); }
+        #progress-bar { stroke: var(--secondary-blue); stroke-linecap: round; filter: drop-shadow(0 0 5px var(--secondary-blue)); }
+        .progress-ring-text { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 3em; font-weight: bold; color: var(--text-light); }
+        
+        footer { margin-top: 30px; color: #888; font-size: 0.9em; text-align: center; }
+
+        #mascot-container { position: fixed; bottom: 20px; right: 20px; width: 100px; height: 100px; cursor: pointer; z-index: 1000; transition: transform 0.2s ease-out; }
+        #mascot-container:hover { transform: scale(1.1); }
+        #mascot-svg { width: 100%; height: 100%; filter: drop-shadow(0 0 8px rgba(255, 223, 150, 0.8)); animation: mascot-wobble 5s ease-in-out infinite; }
+        @keyframes mascot-wobble {
+            0%, 100% { transform: translateY(0) rotate(0deg); } 20% { transform: translateY(-5px) rotate(-3deg); } 40% { transform: translateY(0) rotate(3deg); } 60% { transform: translateY(-2px) rotate(0deg); } 80% { transform: translateY(0) rotate(-2deg); }
+        }
+        .particle { position: fixed; width: 10px; height: 10px; border-radius: 50%; pointer-events: none; z-index: 1001; opacity: 1; transition: transform 1s ease-out, opacity 1s ease-out; }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <div class="title-container">
+            <!-- 標題老虎圖標，王字已上移 -->
+            <svg id="title-tiger-icon" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                <defs><linearGradient id="tiger-gradient" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#ff9900;stop-opacity:1" /><stop offset="100%" style="stop-color:#ffcc00;stop-opacity:1" /></linearGradient></defs>
+                <g transform="translate(0, 5)">
+                    <path d="M25,85 C20,70 20,40 50,30 C80,40 80,70 75,85 L65,90 L35,90 Z" fill="url(#tiger-gradient)"/>
+                    <path d="M30 50 C 35 60, 35 70, 30 80" stroke="#1f1f1f" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+                    <path d="M70 50 C 65 60, 65 70, 70 80" stroke="#1f1f1f" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+                    <path d="M25 65 C 28 70, 28 75, 25 80" stroke="#1f1f1f" stroke-width="2" fill="none" stroke-linecap="round" opacity="0.8"/>
+                    <path d="M75 65 C 72 70, 72 75, 75 80" stroke="#1f1f1f" stroke-width="2" fill="none" stroke-linecap="round" opacity="0.8"/>
+                    <circle cx="50" cy="25" r="20" fill="url(#tiger-gradient)"/>
+                    <circle cx="35" cy="10" r="7" fill="url(#tiger-gradient)"/><circle cx="65" cy="10" r="7" fill="url(#tiger-gradient)"/>
+                    <circle cx="36" cy="11" r="4" fill="#f0f0f0"/><circle cx="64" cy="11" r="4" fill="#f0f0f0"/>
+                    <circle cx="45" cy="25" r="2" fill="#1f1f1f"/><circle cx="55" cy="25" r="2" fill="#1f1f1f"/>
+                    <path d="M 48 30 Q 50 32 52 30" stroke="#1f1f1f" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+                    <!-- 王字已上移 -->
+                    <g stroke="#1f1f1f" stroke-width="2" stroke-linecap="round">
+                        <path d="M45 12 h10" /><path d="M43 16 h14" /><path d="M46 20 h8" /><path d="M50 12 v8" />
+                    </g>
+                    <circle cx="38" cy="70" r="8" fill="url(#tiger-gradient)"/><circle cx="62" cy="70" r="8" fill="url(#tiger-gradient)"/>
+                </g>
+            </svg>
+            <h1>古法健身陪練計時系統</h1>
+        </div>
+        <div class="display-area">
+            <h2 id="exercise-name"></h2>
+            <div id="playlist-visual-timer" style="display: none;"><div class="progress-ring-container"><svg class="progress-ring-svg"><circle id="progress-bg" r="69" cx="75" cy="75" class="progress-ring-circle" /><circle id="progress-bar" r="69" cx="75" cy="75" class="progress-ring-circle" /></svg><div id="progress-text" class="progress-ring-text"></div></div><div class="playlist-status"><span id="playlist-info"></span></div></div>
+            <p id="exercise-desc"></p>
+        </div>
+        <div class="tabs"><button class="tab-button active" data-tab="1">單式練習</button><button class="tab-button" data-tab="2">連續練習</button></div>
+        <div class="tab-content">
+            <div id="tab-1" class="tab-panel active"><div class="form-group"><label for="exercise-select">手動選擇招式：</label><select id="exercise-select"></select></div><div class="manual-timer-area"><h3>手動計時器</h3><div id="timer-display" class="display">00:00.0</div><div class="buttons"><button id="start-pause-btn" class="timer-btn">開始</button><button id="reset-timer-btn" class="reset-btn">重置</button></div></div></div>
+            <div id="tab-2" class="tab-panel"><h3>練習設定</h3><div class="form-group"><label for="duration-select">每式時長：</label><select id="duration-select"><option value="30">30 秒</option><option value="60" selected>1 分鐘</option><option value="120">2 分鐘</option></select><input type="checkbox" id="loop-checkbox" style="cursor:pointer; margin-left: 20px;"><label for="loop-checkbox" style="cursor:pointer;">循環播放</label></div><div class="buttons"><button id="start-playlist-btn" class="start-playlist">開始整套練習</button><button id="stop-playlist-btn" class="stop-playlist" style="display:none;">停止練習</button></div></div>
+        </div>
+    </div>
+    <footer>Copyright © Liyuchiutiger Gongminshen</footer>
+    <div id="mascot-container"><img id="mascot-svg" src="image/LiyuChill.svg" alt="吉祥物"></div>
+    <script>
+    const allDOMElements = {
+        select: document.getElementById('exercise-select'), exName: document.getElementById('exercise-name'), exDesc: document.getElementById('exercise-desc'), durationSelect: document.getElementById('duration-select'), loopCheckbox: document.getElementById('loop-checkbox'), startPlaylistBtn: document.getElementById('start-playlist-btn'), stopPlaylistBtn: document.getElementById('stop-playlist-btn'), playlistInfo: document.getElementById('playlist-info'), visualTimer: document.getElementById('playlist-visual-timer'), progressBar: document.getElementById('progress-bar'), progressText: document.getElementById('progress-text'), timerDisplay: document.getElementById('timer-display'), startPauseBtn: document.getElementById('start-pause-btn'), resetTimerBtn: document.getElementById('reset-timer-btn'), tabs: document.querySelectorAll('.tab-button'), tabPanels: document.querySelectorAll('.tab-panel'), manualTimerArea: document.querySelector('.manual-timer-area'), mascotContainer: document.getElementById('mascot-container')
+    };
+    
+    // --- 進度條設定 ---
+    const radius = allDOMElements.progressBar.r.baseVal.value, circumference = radius * 2 * Math.PI;
+    allDOMElements.progressBar.style.strokeDasharray = `${circumference} ${circumference}`;
+    
+    // --- 全新音效系統 ---
+    let audioContext;
+    const initAudioContext = () => { if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)(); };
+
+    function playNote(freq, type, startTime, duration, vol = 1) {
+        if (!audioContext) return;
+        const o = audioContext.createOscillator();
+        const g = audioContext.createGain();
+        o.frequency.setValueAtTime(freq, startTime);
+        o.type = type;
+        g.gain.setValueAtTime(vol, startTime);
+        g.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+        o.connect(g);
+        g.connect(audioContext.destination);
+        o.start(startTime);
+        o.stop(startTime + duration);
+    }
+    const playStartSound = () => { // 上升音階
+        const now = audioContext.currentTime;
+        playNote(523.25, 'sine', now, 0.15, 0.3);
+        playNote(659.26, 'sine', now + 0.1, 0.15, 0.3);
+        playNote(783.99, 'sine', now + 0.2, 0.15, 0.3);
+    };
+    const playEndWarningSound = () => { // 雙音提示
+        const now = audioContext.currentTime;
+        playNote(783.99, 'triangle', now, 0.1, 0.4);
+        playNote(523.25, 'triangle', now + 0.15, 0.1, 0.4);
+    };
+    const playClickSound = () => playNote(1200, 'triangle', audioContext.currentTime, 0.1, 0.2);
+    const playExplosionSound = () => { // 衝擊+雜訊
+        const now = audioContext.currentTime;
+        playNote(100, 'sine', now, 0.4, 0.8);
+        const noiseSource = audioContext.createBufferSource();
+        const bufferSize = audioContext.sampleRate * 0.3;
+        const buffer = audioContext.createBuffer(1, bufferSize, audioContext.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+        noiseSource.buffer = buffer;
+        const gainNode = audioContext.createGain();
+        gainNode.gain.setValueAtTime(0.3, now);
+        gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+        noiseSource.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        noiseSource.start(now);
+    };
+    const playCompleteSound = () => { // 勝利音效
+        const now = audioContext.currentTime;
+        playNote(523.25, 'sine', now, 0.15);
+        playNote(659.26, 'sine', now + 0.15, 0.15);
+        playNote(783.99, 'sine', now + 0.3, 0.15);
+        playNote(1046.50, 'sine', now + 0.45, 0.3);
+    };
+
+    // --- 資料庫 ---
+    const exercises = [
+        { id: 'mabu-yao', name: '馬步搖', description: '雙腳開立，寬於肩，腳尖朝前。屈膝下蹲，大腿與地面平行，重心在兩腿之間。上身中正，以腰胯帶動重心緩慢左右移動，感受大腿內側的拉伸與力量。' }, { id: 'fenghuolun', name: '風火輪', description: '左腳在前成弓步，右手握拳，以肩為軸，由後向前、向上畫立圓，如車輪滾動。腰胯隨之轉動，目光注視前方。完成後換邊練習。' }, { id: 'shangxia-qifa', name: '上下齊發', description: '自然站立，雙手在腹前交疊。吸氣時，一手掌心向上托至頭頂，另一手掌心向下按至胯旁，身體有上下對拉的伸展感。呼氣還原，交替進行。' }, { id: 'yingji-changkong', name: '鷹擊長空', description: '穩坐馬步，雙臂在胸前交叉。吸氣時，雙臂如鷹翼般向兩側緩緩展開，挺胸抬頭，感受胸背的開闊。呼氣時緩慢收回。' }, { id: 'xuanzhuan-qiankun', name: '旋轉乾坤', description: '雙腳與肩同寬，膝蓋微曲。雙手在胸前做抱球狀，以腰為軸心，帶動雙臂與上半身向左側緩慢旋轉至極限，稍作停留後轉向右側。' }, { id: 'gongbu-xuanji', name: '弓步旋脊', description: '左腳在前成弓步。身體向左後方轉體，右手向前推出，左手向後伸展，目光隨左手遠望。感受脊柱的扭轉拉伸。完成後換邊。' }, { id: 'mabu-cezhan', name: '馬步側展', description: '穩坐馬步。左手上舉，貼近耳朵，呼氣時身體向右側彎曲，感受左側腰背的強力拉伸。吸氣還原。完成後換邊練習。' }, { id: 'mabu-ningyao', name: '馬步擰腰', description: '穩坐馬步，雙臂側平舉。以腰為軸，帶動上半身向左側轉動，雙臂保持水平。目光隨左手移動。完成後換邊練習。' }, { id: 'niuyao-baikua', name: '扭腰擺跨', description: '雙腳與肩同寬，膝蓋微曲放鬆。以腰胯為中心，左右畫平圓，帶動整個骨盆和腰部活動開來，動作盡量圓活、放鬆。' }, { id: 'zuoyou-lajin', name: '左右拉筋', description: '雙腳大開立。重心移至右腿，屈膝下蹲成僕步，左腿完全伸直，腳尖內扣。感受左大腿內側的強烈拉伸感。保持片刻後換邊。' }, { id: 'xuanlong-ji', name: '旋龍脊', description: '馬步站立，雙手扶膝。身體前傾，從尾椎開始，一節一節地向前、向左、向後、向右，做圓形轉動，感受整條脊柱如龍般盤旋。' }, { id: 'chuanzhang-lanyue', name: '穿掌攬月', description: '穩坐馬步。雙手由下往上，在胸前交錯，左手上穿至頭頂，右手下按至腹前，如懷中抱月。眼隨上手。交替進行，動作連貫。' }, { id: 'jiaolong-youzou', name: '蛟龍遊走', description: '左腳在前成弓步，壓低重心。身體向前、向左、向下探出，再收回，整個運動軌跡如蛟龍在水中潛行。感受全身力量的協同與流動。完成後換邊。' }
+    ];
+    
+    // --- 核心功能 ---
+    function setProgress(percent) { const offset = circumference - percent / 100 * circumference; allDOMElements.progressBar.style.strokeDashoffset = offset; }
+    function updateExerciseDisplay(id, withFade = false) {
+        const ex = exercises.find(e => e.id === id); if (!ex) return;
+        const updateText = () => { allDOMElements.exName.textContent = ex.name; allDOMElements.exDesc.textContent = ex.description; allDOMElements.select.value = id; if (withFade) allDOMElements.exDesc.classList.remove('fade-out'); };
+        if (withFade) { allDOMElements.exDesc.classList.add('fade-out'); setTimeout(updateText, 150); } else { updateText(); }
+    }
+    
+    let playlistTimer = null, countdownTimer = null, currentExIndex = 0, isPlaylistActive = false;
+    function startPlaylist() {
+        initAudioContext(); isPlaylistActive = true; currentExIndex = 0;
+        allDOMElements.startPlaylistBtn.style.display = 'none'; allDOMElements.stopPlaylistBtn.style.display = 'inline-block';
+        allDOMElements.visualTimer.style.display = 'block'; allDOMElements.exDesc.classList.add('minimized');
+        allDOMElements.manualTimerArea.style.display = 'none'; allDOMElements.tabs.forEach(t => t.style.pointerEvents = 'none');
+        playNextExercise();
+    }
+    function stopPlaylist() {
+        isPlaylistActive = false; clearTimeout(playlistTimer); clearInterval(countdownTimer);
+        allDOMElements.playlistInfo.textContent = '練習已停止'; allDOMElements.visualTimer.style.display = 'none';
+        allDOMElements.exDesc.classList.remove('minimized'); allDOMElements.startPlaylistBtn.style.display = 'inline-block';
+        allDOMElements.stopPlaylistBtn.style.display = 'none'; allDOMElements.manualTimerArea.style.display = 'block';
+        allDOMElements.tabs.forEach(t => t.style.pointerEvents = 'auto'); updateExerciseDisplay(allDOMElements.select.value, true);
+    }
+    function playNextExercise() {
+        if (!isPlaylistActive) return;
+        if (currentExIndex >= exercises.length) {
+            if (allDOMElements.loopCheckbox.checked) currentExIndex = 0;
+            else { playCompleteSound(); allDOMElements.playlistInfo.textContent = '恭喜！已完成整套練習！'; stopPlaylist(); return; }
+        }
+        const ex = exercises[currentExIndex], duration = parseInt(allDOMElements.durationSelect.value); let timeLeft = duration;
+        updateExerciseDisplay(ex.id, true); playStartSound();
+        const nextExName = exercises[currentExIndex + 1]?.name || '重新開始';
+        allDOMElements.playlistInfo.textContent = `下一式: ${nextExName}`;
+        setProgress(100); allDOMElements.progressText.textContent = timeLeft;
+        clearInterval(countdownTimer);
+        countdownTimer = setInterval(() => { timeLeft--; setProgress(timeLeft / duration * 100); allDOMElements.progressText.textContent = timeLeft; if (timeLeft <= 0) clearInterval(countdownTimer); }, 1000);
+        if (duration > 3) { setTimeout(playEndWarningSound, (duration - 3) * 1000); }
+        playlistTimer = setTimeout(() => { currentExIndex++; playNextExercise(); }, duration * 1000);
+    }
+    
+    // --- 手動計時器 ---
+    let timerInterval=null,startTime=0,elapsedTime=0,isRunning=false;function formatTime(t){const e=Math.floor(t/6e4),s=Math.floor(t%6e4/1e3),n=Math.floor(t%1e3/100);return`${String(e).padStart(2,"0")}:${String(s).padStart(2,"0")}.${n}`}function updateTimer(){const t=Date.now();elapsedTime=t-startTime,allDOMElements.timerDisplay.textContent=formatTime(elapsedTime)}allDOMElements.startPauseBtn.addEventListener("click",()=>{isRunning?(clearInterval(timerInterval),elapsedTime=Date.now()-startTime,isRunning=!1,allDOMElements.startPauseBtn.textContent="繼續"):(startTime=Date.now()-elapsedTime,timerInterval=setInterval(updateTimer,100),isRunning=!0,allDOMElements.startPauseBtn.textContent="暫停")});allDOMElements.resetTimerBtn.addEventListener("click",()=>{clearInterval(timerInterval),isRunning=!1,elapsedTime=0,startTime=0,allDOMElements.timerDisplay.textContent="00:00.0",allDOMElements.startPauseBtn.textContent="開始"});
+    
+    // --- 吉祥物互動功能 ---
+    let lastClickTime = 0, clickCombo = 0;
+    const comboThreshold = 4, comboTimeout = 300;
+    function createParticles(x, y, isExplosion = false) {
+        const particleCount = isExplosion ? 100 : 25;
+        const colors = ['#FFD700', '#FF69B4', '#00BFFF', '#7CFC00', '#FF4500', '#9400D3'];
+        for (let i = 0; i < particleCount; i++) {
+            const particle = document.createElement('div'); particle.classList.add('particle');
+            particle.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+            const size = Math.random() * (isExplosion ? 12 : 8) + 4;
+            particle.style.width = `${size}px`; particle.style.height = `${size}px`;
+            particle.style.left = `${x}px`; particle.style.top = `${y}px`;
+            document.body.appendChild(particle);
+            const angle = Math.random() * Math.PI * 2;
+            // 射程加倍
+            const distance = Math.random() * (isExplosion ? 500 : 300) + 100;
+            const endX = Math.cos(angle) * distance; const endY = Math.sin(angle) * distance;
+            requestAnimationFrame(() => { particle.style.transform = `translate(${endX}px, ${endY}px) scale(0)`; particle.style.opacity = '0'; });
+            setTimeout(() => { particle.remove(); }, 1000);
+        }
+    }
+    allDOMElements.mascotContainer.addEventListener('click', (e) => {
+        initAudioContext();
+        const currentTime = Date.now();
+        if (currentTime - lastClickTime < comboTimeout) { clickCombo++; } else { clickCombo = 1; }
+        lastClickTime = currentTime;
+        const rect = allDOMElements.mascotContainer.getBoundingClientRect();
+        const clickX = rect.left + rect.width / 2; const clickY = rect.top + rect.height / 2;
+        if (clickCombo >= comboThreshold) {
+            playExplosionSound(); createParticles(clickX, clickY, true); clickCombo = 0;
+        } else {
+            playClickSound(); createParticles(clickX, clickY, false);
+        }
+    });
+
+    // --- 初始化 ---
+    function initialize() {
+        exercises.forEach(ex => { const o = document.createElement('option'); o.value = ex.id; o.textContent = ex.name; allDOMElements.select.appendChild(o); });
+        allDOMElements.select.addEventListener('change', e => { if(!isPlaylistActive) updateExerciseDisplay(e.target.value, true); });
+        allDOMElements.startPlaylistBtn.addEventListener('click', startPlaylist);
+        allDOMElements.stopPlaylistBtn.addEventListener('click', stopPlaylist);
+        allDOMElements.tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                allDOMElements.tabs.forEach(t => t.classList.remove('active')); tab.classList.add('active');
+                allDOMElements.tabPanels.forEach(panel => { panel.classList.toggle('active', panel.id === `tab-${tab.dataset.tab}`); });
+            });
+        });
+        updateExerciseDisplay(exercises[0].id);
+        document.body.addEventListener('click', initAudioContext, { once: true });
+    }
+    document.addEventListener('DOMContentLoaded', initialize);
+    </script>
+</body>
+</html>
