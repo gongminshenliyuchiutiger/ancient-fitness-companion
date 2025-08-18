@@ -103,15 +103,16 @@
         </div>
         <div class="tabs"><button class="tab-button active" data-tab="1">單式練習</button><button class="tab-button" data-tab="2">連續練習</button></div>
         <div class="tab-content">
-            <div id="tab-1" class="tab-panel active"><div class="form-group"><label for="exercise-select">手動選擇招式：</label><select id="exercise-select"></select></div><div class="manual-timer-area"><h3>手動計時器</h3><div id="timer-display" class="display">00:00.0</div><div class="buttons"><button id="start-pause-btn" class="timer-btn">開始</button><button id="reset-timer-btn" class="reset-btn">重置</button></div></div></div>
-            <div id="tab-2" class="tab-panel"><h3>練習設定</h3><div class="form-group"><label for="duration-select">每式時長：</label><select id="duration-select"><option value="30">30 秒</option><option value="60" selected>1 分鐘</option><option value="120">2 分鐘</option></select><input type="checkbox" id="loop-checkbox" style="cursor:pointer; margin-left: 20px;"><label for="loop-checkbox" style="cursor:pointer;">循環播放</label></div><div class="buttons"><button id="start-playlist-btn" class="start-playlist">開始整套練習</button><button id="stop-playlist-btn" class="stop-playlist" style="display:none;">停止練習</button></div></div>
+            <div id="tab-1" class="tab-panel active"><div class="form-group"><label for="exercise-select">手動選擇：</label><select id="exercise-select"></select></div><div class="manual-timer-area"><h3>手動計時器</h3><div id="timer-display" class="display">00:00.0</div><div class="buttons"><button id="start-pause-btn" class="timer-btn">開始</button><button id="reset-timer-btn" class="reset-btn">重置</button></div></div></div>
+            <div id="tab-2" class="tab-panel"><h3>練習設定</h3><div class="form-group"><label for="duration-select">每式時長：</label><select id="duration-select"><option value="30">30 秒</option><option value="60" selected>1 分鐘</option><option value="120">2 分鐘</option></select><input type="checkbox" id="loop-checkbox" style="cursor:pointer; margin-left: 20px;"><label for="loop-checkbox" style="cursor:pointer;">循環播放</label><input type="checkbox" id="voice-toggle-checkbox" style="cursor:pointer; margin-left: 20px;"><label for="voice-toggle-checkbox" style="cursor:pointer;">語音報讀</label></div><div class="buttons"><button id="start-playlist-btn" class="start-playlist">開始整套練習</button><button id="stop-playlist-btn" class="stop-playlist" style="display:none;">停止練習</button></div></div>
         </div>
     </div>
     <footer>Copyright © Liyuchiutiger Gongminshen</footer>
     <div id="mascot-container"><img id="mascot-svg" src="image/LiyuChill.svg" alt="吉祥物"></div>
     <script>
     const allDOMElements = {
-        select: document.getElementById('exercise-select'), exName: document.getElementById('exercise-name'), exDesc: document.getElementById('exercise-desc'), durationSelect: document.getElementById('duration-select'), loopCheckbox: document.getElementById('loop-checkbox'), startPlaylistBtn: document.getElementById('start-playlist-btn'), stopPlaylistBtn: document.getElementById('stop-playlist-btn'), playlistInfo: document.getElementById('playlist-info'), visualTimer: document.getElementById('playlist-visual-timer'), progressBar: document.getElementById('progress-bar'), progressText: document.getElementById('progress-text'), timerDisplay: document.getElementById('timer-display'), startPauseBtn: document.getElementById('start-pause-btn'), resetTimerBtn: document.getElementById('reset-timer-btn'), tabs: document.querySelectorAll('.tab-button'), tabPanels: document.querySelectorAll('.tab-panel'), manualTimerArea: document.querySelector('.manual-timer-area'), mascotContainer: document.getElementById('mascot-container')
+        select: document.getElementById('exercise-select'), exName: document.getElementById('exercise-name'), exDesc: document.getElementById('exercise-desc'), durationSelect: document.getElementById('duration-select'), loopCheckbox: document.getElementById('loop-checkbox'), startPlaylistBtn: document.getElementById('start-playlist-btn'), stopPlaylistBtn: document.getElementById('stop-playlist-btn'), playlistInfo: document.getElementById('playlist-info'), visualTimer: document.getElementById('playlist-visual-timer'), progressBar: document.getElementById('progress-bar'), progressText: document.getElementById('progress-text'), timerDisplay: document.getElementById('timer-display'), startPauseBtn: document.getElementById('start-pause-btn'), resetTimerBtn: document.getElementById('reset-timer-btn'), tabs: document.querySelectorAll('.tab-button'), tabPanels: document.querySelectorAll('.tab-panel'), manualTimerArea: document.querySelector('.manual-timer-area'), mascotContainer: document.getElementById('mascot-container'),
+        voiceToggle: document.getElementById('voice-toggle-checkbox')
     };
     
     // --- 進度條設定 ---
@@ -170,6 +171,18 @@
         playNote(783.99, 'sine', now + 0.3, 0.15);
         playNote(1046.50, 'sine', now + 0.45, 0.3);
     };
+    
+    // --- 語音報讀功能 ---
+    const speakText = (text) => {
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.cancel(); // 清除先前的語音佇列，讓新的語音可以立即播放
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'zh-TW'; // 指定使用台灣正體中文語音
+            utterance.rate = 1.1;     // 稍微加快語速，讓描述聽起來更流暢
+            utterance.pitch = 1.0;    // 音高 (正常)
+            window.speechSynthesis.speak(utterance);
+        }
+    };
 
     // --- 資料庫 ---
     const exercises = [
@@ -194,6 +207,7 @@
     }
     function stopPlaylist() {
         isPlaylistActive = false; clearTimeout(playlistTimer); clearInterval(countdownTimer);
+        if ('speechSynthesis' in window) { window.speechSynthesis.cancel(); } // 停止時也停止語音
         allDOMElements.playlistInfo.textContent = '練習已停止'; allDOMElements.visualTimer.style.display = 'none';
         allDOMElements.exDesc.classList.remove('minimized'); allDOMElements.startPlaylistBtn.style.display = 'inline-block';
         allDOMElements.stopPlaylistBtn.style.display = 'none'; allDOMElements.manualTimerArea.style.display = 'block';
@@ -205,13 +219,39 @@
             if (allDOMElements.loopCheckbox.checked) currentExIndex = 0;
             else { playCompleteSound(); allDOMElements.playlistInfo.textContent = '恭喜！已完成整套練習！'; stopPlaylist(); return; }
         }
-        const ex = exercises[currentExIndex], duration = parseInt(allDOMElements.durationSelect.value); let timeLeft = duration;
-        updateExerciseDisplay(ex.id, true); playStartSound();
-        const nextExName = exercises[currentExIndex + 1]?.name || '重新開始';
+        const ex = exercises[currentExIndex];
+        const duration = parseInt(allDOMElements.durationSelect.value);
+        let timeLeft = duration;
+        updateExerciseDisplay(ex.id, true); 
+        playStartSound();
+        
+        // --- 語音報讀觸發點 (包含描述) ---  <-- 修改
+        if (allDOMElements.voiceToggle.checked) {
+            const textToSpeak = `${ex.name}。 ${ex.description}`;
+            speakText(textToSpeak);
+        }
+        
+        const nextExName = exercises[currentExIndex + 1]?.name || (allDOMElements.loopCheckbox.checked ? exercises[0].name : '完成練習');
         allDOMElements.playlistInfo.textContent = `下一式: ${nextExName}`;
         setProgress(100); allDOMElements.progressText.textContent = timeLeft;
         clearInterval(countdownTimer);
-        countdownTimer = setInterval(() => { timeLeft--; setProgress(timeLeft / duration * 100); allDOMElements.progressText.textContent = timeLeft; if (timeLeft <= 0) clearInterval(countdownTimer); }, 1000);
+        countdownTimer = setInterval(() => {
+            timeLeft--;
+            setProgress(timeLeft / duration * 100);
+            allDOMElements.progressText.textContent = timeLeft;
+
+            // --- 語音報讀剩餘秒數 ---  <-- 新增
+            if (allDOMElements.voiceToggle.checked && duration > 10) {
+                if (timeLeft === 10) {
+                    speakText("剩下10秒");
+                } else if (timeLeft <= 3 && timeLeft > 0) {
+                    speakText(String(timeLeft));
+                }
+            }
+
+            if (timeLeft <= 0) clearInterval(countdownTimer);
+        }, 1000);
+        
         if (duration > 3) { setTimeout(playEndWarningSound, (duration - 3) * 1000); }
         playlistTimer = setTimeout(() => { currentExIndex++; playNextExercise(); }, duration * 1000);
     }
@@ -233,7 +273,6 @@
             particle.style.left = `${x}px`; particle.style.top = `${y}px`;
             document.body.appendChild(particle);
             const angle = Math.random() * Math.PI * 2;
-            // 射程加倍
             const distance = Math.random() * (isExplosion ? 500 : 300) + 100;
             const endX = Math.cos(angle) * distance; const endY = Math.sin(angle) * distance;
             requestAnimationFrame(() => { particle.style.transform = `translate(${endX}px, ${endY}px) scale(0)`; particle.style.opacity = '0'; });
